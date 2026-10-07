@@ -1,2 +1,0 @@
-./empty2.txt
-./empty1.txt
