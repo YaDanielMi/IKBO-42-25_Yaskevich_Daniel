@@ -8,7 +8,7 @@
 #!/bin/bash
 cat /etc/passwd | grep -E "^[a-zA-Z]" | cut -d: -f1 | sort
 ```
-(screens/1.png)
+![](screens/1.png)
 
 ## Задача 2
 
@@ -16,7 +16,7 @@ cat /etc/passwd | grep -E "^[a-zA-Z]" | cut -d: -f1 | sort
 #!/bin/bash
 grep -v "^#" /etc/protocols | grep -v "^$" | awk '{print $2, $1}' | sort -n | tail -n 5
 ```
-(screens/2.png)
+![](screens/2.png)
 
 ## Задача 3
 
@@ -36,7 +36,7 @@ echo "+$line+"
 echo "| $text |"
 echo "+$line+"
 ```
-(screens/3.png)
+![](screens/3.png)
 
 ## Задача 4
 
@@ -46,7 +46,7 @@ file="$1"
 grep -oE "[a-zA-Z_][a-zA-Z0-9_]*" "$file" | sort -u | tr "\n" " "
 echo ""
 ```
-(screens/4.png)
+![](screens/4.png)
 
 ## Задача 5
 
@@ -64,7 +64,7 @@ sudo cp "$file" /usr/local/bin/
 
 echo "Команда $file установлена"
 ```
-(screens/5.png)
+![](screens/5.png)
 
 ## Задача 6
 
@@ -98,7 +98,7 @@ for file in "$dir"/*.c "$dir"/*.js "$dir"/*.py; do
     fi
 done
 ```
-(screens/6.png)
+![](screens/6.png)
 
 ## Задача 7
 
@@ -125,7 +125,7 @@ done < /tmp/hashes_$$.txt
 
 rm /tmp/hashes_$$.txt
 ```
-(screens/7.png)
+![](screens/7.png)
 
 ## Задача 8
 
@@ -142,7 +142,7 @@ tar -cf "archive_$ext.tar" *."$ext"
 
 echo "Готово: archive_$ext.tar"
 ```
-(screens/8.png)
+![](screens/8.png)
 
 ## Задача 9
 
@@ -153,7 +153,7 @@ output="$2"
 
 sed "s/    /\t/g" "$input" > "$output"
 ```
-(screens/9.png)
+![](screens/9.png)
 
 ## Задача 10
 
@@ -166,4 +166,4 @@ fi
 
 find "$dir" -maxdepth 1 -type f -empty
 ```
-(screens/10.png)
+![](screens/10.png)
