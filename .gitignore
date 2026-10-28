@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+venv/
+.venv/
+.idea/
+.vscode/
+*.swp
+*.log
+*.zip
+*.tar.gz
