@@ -1,0 +1,72 @@
+# Стартовый скрипт: проверка всех команд этапов 1-3.
+# Запуск: ./run.sh --vfs examples/vfs/deep \
+#             --script examples/startup/all_commands.emu
+
+# ---------- ls: режимы ----------
+# без аргументов: содержимое текущего каталога
+ls
+# скрытые файлы (-a), подробный формат (-l), ключи можно склеивать
+ls -a
+ls -l
+ls -la
+# путь относительный и абсолютный
+ls docs
+ls /docs/guides
+ls docs/guides/advanced
+# несколько аргументов: заголовки "путь:"
+ls docs src
+# файл вместо каталога
+ls readme.txt
+ls -l readme.txt
+# аргументы в кавычках
+ls "dir with space"
+ls 'dir with space/file name.txt'
+ls dir\ with\ space
+# пустой каталог (в нём только скрытый .gitkeep)
+ls empty
+ls -a empty
+# разделитель -- и .. / .
+ls docs/../src/./lib
+ls -- -l
+
+# ---------- cd: режимы ----------
+# предыдущего каталога ещё нет
+cd -
+cd docs
+ls
+cd guides/advanced
+ls
+# вверх на два уровня и по абсолютному пути
+cd ../..
+cd /src/lib
+ls
+# cd - возвращает в предыдущий каталог и печатает его
+cd -
+cd -
+# cd без аргументов — в корень
+cd
+cd "dir with space"
+ls
+cd ..
+# .. выше корня остаётся в корне
+cd /../..
+cd .
+
+# ---------- ошибки ----------
+ls missing
+ls docs missing readme.txt
+ls readme.txt/x
+ls -z
+ls --bogus
+cd missing
+cd readme.txt
+cd docs/missing/x
+cd a b
+cd readme.txt/..
+foo
+ls "незакрытая
+exit 1 2
+
+# ---------- exit ----------
+# код 258 приводится по модулю 256 -> 2
+exit 258

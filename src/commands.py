@@ -1,5 +1,6 @@
 """Built-in commands of the shell emulator."""
 from result import Result
+from vfs_commands import cd_in_vfs, ls_in_vfs
 
 EXIT_CODE_MODULO = 256
 EXIT_BAD_ARGUMENT = 2
@@ -11,13 +12,17 @@ def stub(name, args):
 
 
 def cmd_ls(shell, args):
-    """List directory contents (stub at this stage)."""
-    return stub("ls", args)
+    """List directory contents (a stub when no VFS is connected)."""
+    if shell.vfs is None:
+        return stub("ls", args)
+    return ls_in_vfs(shell, args)
 
 
 def cmd_cd(shell, args):
-    """Change the working directory (stub at this stage)."""
-    return stub("cd", args)
+    """Change directory (a stub when no VFS is connected)."""
+    if shell.vfs is None:
+        return stub("cd", args)
+    return cd_in_vfs(shell, args)
 
 
 def cmd_exit(shell, args):
