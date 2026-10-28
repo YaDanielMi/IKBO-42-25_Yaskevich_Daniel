@@ -2,6 +2,7 @@
 import tkinter as tk
 
 from runner import run_line
+from script import run_script
 
 BG_COLOR = "#1e1e1e"
 FG_COLOR = "#d4d4d4"
@@ -11,6 +12,9 @@ DEBUG_COLOR = "#808080"
 FONT = "TkFixedFont"
 WINDOW_SIZE = "900x560"
 LOG_END = "end"
+WELCOME = "Эмулятор оболочки. Команды: ls, cd, exit."
+EXIT_NOTICE = "[сеанс завершён командой exit из скрипта, закройте окно]"
+TclError = tk.TclError
 
 
 class TerminalWindow:
@@ -117,8 +121,18 @@ class TerminalWindow:
             self.history_pos += 1
             self._show_history()
 
-    def start(self):
-        """Show the welcome text and enter the main loop."""
-        self.debug(["Эмулятор оболочки. Команды: ls, cd, exit."])
+    def start(self, notices=(), script_lines=()):
+        """Show notices, replay the startup script, run the main loop.
+
+        If the script ends with exit the window stays open (read-only)
+        so that the dialog can be inspected.
+        """
+        self.debug([WELCOME])
+        self.debug(notices)
         self.refresh_prompt()
+        result = run_script(self.shell, script_lines, self)
+        self.refresh_prompt()
+        if result is not None:
+            self.debug([EXIT_NOTICE])
+            self.entry.configure(state=tk.DISABLED)
         self.root.mainloop()
