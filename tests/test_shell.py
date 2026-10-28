@@ -8,6 +8,7 @@ class ShellTest(unittest.TestCase):
     """Behaviour of Shell.execute at the REPL stage."""
 
     def setUp(self):
+        """Create a shell without VFS."""
         self.shell = Shell("alice", "box")
 
     def test_prompt(self):

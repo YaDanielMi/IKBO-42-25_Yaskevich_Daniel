@@ -2,18 +2,18 @@
 from cmdparser import ParseError, parse_line
 from commands import COMMANDS
 from result import Result
-
-ROOT_DIR = "/"
+from vfs import ROOT_PATH
 
 
 class Shell:
     """State of the emulated shell and the command dispatcher."""
 
-    def __init__(self, user, host):
+    def __init__(self, user, host, vfs=None):
         self.user = user
         self.host = host
-        self.cwd = ROOT_DIR
-        self.oldpwd = ROOT_DIR
+        self.vfs = vfs
+        self.cwd = ROOT_PATH
+        self.oldpwd = None
 
     def prompt(self):
         """Return the prompt string, e.g. 'user@host:/$ '."""

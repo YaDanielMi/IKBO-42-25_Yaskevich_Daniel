@@ -34,6 +34,16 @@ class MainTest(unittest.TestCase):
         self.assertEqual(code, 9)
         self.assertIn("ls: заглушка", out)
 
+    def test_vfs_is_loaded_and_used(self):
+        with tempfile.TemporaryDirectory() as folder:
+            os.makedirs(os.path.join(folder, "sub"))
+            code, out, _ = self.run_main(
+                ["--headless", "--vfs", folder], "cd sub\nexit 4\n"
+            )
+        self.assertEqual(code, 4)
+        self.assertIn("VFS загружена в память: каталогов 1", out)
+        self.assertIn(":/sub$ ", out)
+
     def test_bad_vfs_is_reported(self):
         code, out, err = self.run_main(["--headless", "--vfs", "/no/dir"])
         self.assertEqual(code, EXIT_FAILURE)

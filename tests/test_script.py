@@ -36,6 +36,7 @@ class RunScriptTest(unittest.TestCase):
     """Replaying scripts as a dialog."""
 
     def setUp(self):
+        """Create a shell and a recording view."""
         self.shell = Shell("u", "h")
         self.view = RecordingView()
 
