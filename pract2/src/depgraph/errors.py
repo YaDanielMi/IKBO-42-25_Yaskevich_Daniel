@@ -15,3 +15,7 @@ class RepositoryError(DepGraphError):
 
 class PackageNotFoundError(RepositoryError):
     """The requested package does not exist in the repository."""
+
+
+class RenderError(DepGraphError):
+    """The image of the graph cannot be produced."""

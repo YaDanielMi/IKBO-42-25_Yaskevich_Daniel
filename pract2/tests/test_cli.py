@@ -8,10 +8,11 @@ import unittest
 from unittest import mock
 
 from depgraph.cli import EXIT_ERROR, EXIT_OK, main
-from depgraph.errors import PackageNotFoundError
+from depgraph.errors import PackageNotFoundError, RenderError
 
 USAGE_ERROR = 2
 REPOSITORY = "depgraph.repository.NpmRepository"
+RENDER = "depgraph.plantuml.render_png"
 
 
 def run_cli(argv):
@@ -25,23 +26,40 @@ def run_cli(argv):
     return code, out.getvalue(), err.getvalue()
 
 
-class TestModeTests(unittest.TestCase):
-    """The tool works with a test repository file."""
+class WorkDirTestCase(unittest.TestCase):
+    """Base class: a temporary directory and a mocked PNG renderer."""
+
+    def setUp(self):
+        """Create the directory and replace the PNG renderer."""
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.directory = directory.name
+        patcher = mock.patch(RENDER)
+        self.render = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def path(self, name):
+        """Return the path of a file inside the temporary directory."""
+        return os.path.join(self.directory, name)
 
     def run_on(self, text, *extra):
-        """Run the tool on a test repository given as text."""
-        with tempfile.TemporaryDirectory() as directory:
-            path = os.path.join(directory, "repo.txt")
-            with open(path, "w", encoding="utf-8") as file:
-                file.write(text)
-            return run_cli(["-t", "-r", path, *extra])
+        """Run the tool in test mode on a repository given as text."""
+        repo = self.path("repo.txt")
+        with open(repo, "w", encoding="utf-8") as file:
+            file.write(text)
+        output = self.path("g.png")
+        return run_cli(["-t", "-r", repo, "-o", output, *extra])
+
+
+class TestModeTests(WorkDirTestCase):
+    """The tool works with a test repository file."""
 
     def test_prints_graph(self):
         """The transitive graph is printed as adjacency lines."""
         code, out, _ = self.run_on("A: B C\nB: C\nC:\n", "-p", "A")
         self.assertEqual(code, EXIT_OK)
         self.assertEqual(
-            out.splitlines(),
+            out.splitlines()[:4],
             [
                 "Dependencies of A: 2 package(s)",
                 "  A -> B, C",
@@ -50,17 +68,35 @@ class TestModeTests(unittest.TestCase):
             ],
         )
 
+    def test_saves_text_and_image(self):
+        """The PlantUML text is saved and the PNG renderer is called."""
+        _, out, _ = self.run_on("A: B\nB:\n", "-p", "A")
+        with open(self.path("g.puml"), encoding="utf-8") as file:
+            self.assertIn("n0 --> n1", file.read())
+        self.render.assert_called_once()
+        self.assertEqual(self.render.call_args.args[1], self.path("g.png"))
+        self.assertIn("Graph image:", out)
+
+    def test_ascii_tree(self):
+        """The ASCII tree is printed only when it is requested."""
+        text = "A: B C\nB: D\nC: D\nD:\n"
+        _, with_tree, _ = self.run_on(text, "-p", "A", "-a")
+        _, without_tree, _ = self.run_on(text, "-p", "A")
+        self.assertIn("|-- B\n|   `-- D\n`-- C\n    `-- D (*)", with_tree)
+        self.assertNotIn("`--", without_tree)
+
     def test_cycle(self):
         """A cyclic graph is printed and the tool terminates."""
-        code, out, _ = self.run_on("A: B\nB: A\n", "-p", "A")
+        code, out, _ = self.run_on("A: B\nB: A\n", "-p", "A", "-a")
         self.assertEqual(code, EXIT_OK)
         self.assertIn("  B -> A", out)
+        self.assertIn("`-- A (cycle)", out)
 
     def test_filter(self):
         """The filter option removes packages from the graph."""
         _, out, _ = self.run_on("A: B C\nB:\nC:\n", "-p", "A", "-f", "B")
         self.assertEqual(
-            out.splitlines(),
+            out.splitlines()[:3],
             ["Dependencies of A: 1 package(s)", "  A -> C", "  C -> (none)"],
         )
 
@@ -71,7 +107,7 @@ class TestModeTests(unittest.TestCase):
         )
         self.assertEqual(code, EXIT_OK)
         self.assertEqual(
-            out.splitlines(),
+            out.splitlines()[:4],
             [
                 "Reverse dependencies of C: 2 package(s)",
                 "  C <- A, B",
@@ -79,6 +115,13 @@ class TestModeTests(unittest.TestCase):
                 "  B <- A",
             ],
         )
+
+    def test_reverse_image_arrows(self):
+        """Arrows of a reverse graph still mean 'depends on'."""
+        self.run_on("A: B\nB:\n", "-p", "B", "--reverse")
+        with open(self.path("g.puml"), encoding="utf-8") as file:
+            text = file.read()
+        self.assertIn("n1 --> n0", text)
 
     def test_unknown_package(self):
         """A package missing in the test repository is an error."""
@@ -99,8 +142,16 @@ class TestModeTests(unittest.TestCase):
         self.assertEqual(code, EXIT_ERROR)
         self.assertIn("filter substring", err)
 
+    def test_render_error(self):
+        """A rendering failure is an error but the text is kept."""
+        self.render.side_effect = RenderError("no PlantUML")
+        code, _, err = self.run_on("A:\n", "-p", "A")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("no PlantUML", err)
+        self.assertTrue(os.path.exists(self.path("g.puml")))
 
-class NpmModeTests(unittest.TestCase):
+
+class NpmModeTests(WorkDirTestCase):
     """The tool prints the graph of an npm package."""
 
     def test_repository_error(self):
@@ -125,7 +176,7 @@ class NpmModeTests(unittest.TestCase):
         repository.dependencies.side_effect = lambda name: {
             "express": ["qs"], "qs": []}[name]
         with mock.patch(REPOSITORY, return_value=repository):
-            code, out, _ = run_cli(["-p", "express"])
+            code, out, _ = run_cli(["-p", "express", "-o", self.path("e.png")])
         self.assertEqual(code, EXIT_OK)
         self.assertIn("  express -> qs", out)
 
@@ -150,6 +201,12 @@ class ErrorHandlingTests(unittest.TestCase):
         """An invalid package name is reported."""
         self.assert_error(["-p", "Bad Name"], "invalid package name")
 
+    def test_bad_test_package(self):
+        """Test mode accepts only uppercase Latin package names."""
+        self.assert_error(
+            ["-p", "express", "-t", "-r", __file__], "uppercase Latin"
+        )
+
     def test_bad_url(self):
         """An invalid repository URL is reported."""
         self.assert_error(["-p", "x", "-r", "ftp://h"], "repository URL")
@@ -167,6 +224,10 @@ class ErrorHandlingTests(unittest.TestCase):
     def test_bad_output(self):
         """A non-png output name is reported."""
         self.assert_error(["-p", "x", "-o", "g.jpg"], "output file")
+
+    def test_bad_output_directory(self):
+        """A missing output directory is reported."""
+        self.assert_error(["-p", "x", "-o", "/no/dir/g.png"], "directory")
 
     def test_bad_filter(self):
         """A filter with whitespace is reported."""

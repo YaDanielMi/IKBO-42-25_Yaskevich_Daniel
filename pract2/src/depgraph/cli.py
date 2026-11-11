@@ -3,6 +3,8 @@
 import argparse
 import sys
 
+from depgraph import plantuml
+from depgraph.ascii_tree import render_tree
 from depgraph.config import DEFAULT_OUTPUT, build_config
 from depgraph.errors import DepGraphError
 from depgraph.graph import build_dependency_graph, build_reverse_graph
@@ -60,12 +62,24 @@ def print_graph(graph, root, reverse):
         print(f"  {name} {arrow} {targets}")
 
 
+def save_image(graph, config):
+    """Save the PlantUML text and the PNG image of the graph."""
+    text = plantuml.to_plantuml(graph, config.package, config.reverse)
+    print(f"PlantUML text: {plantuml.save_text(text, config.output)}")
+    plantuml.render_png(text, config.output)
+    print(f"Graph image: {config.output}")
+
+
 def run(config):
-    """Build the selected graph and print it."""
+    """Build the selected graph, print it and save its image."""
     repository = open_repository(config)
     build = build_reverse_graph if config.reverse else build_dependency_graph
     graph = build(repository, config.package, config.filter_substring)
     print_graph(graph, config.package, config.reverse)
+    if config.ascii_tree:
+        print()
+        print("\n".join(render_tree(graph, config.package)))
+    save_image(graph, config)
 
 
 def main(argv=None):
