@@ -1,0 +1,5 @@
+# A diamond: D is reachable by two paths
+A: B C
+B: D
+C: D
+D:

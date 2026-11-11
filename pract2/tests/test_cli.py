@@ -2,6 +2,8 @@
 
 import contextlib
 import io
+import os
+import tempfile
 import unittest
 from unittest import mock
 
@@ -9,7 +11,7 @@ from depgraph.cli import EXIT_ERROR, EXIT_OK, main
 from depgraph.errors import PackageNotFoundError
 
 USAGE_ERROR = 2
-REPOSITORY = "depgraph.cli.NpmRepository"
+REPOSITORY = "depgraph.repository.NpmRepository"
 
 
 def run_cli(argv):
@@ -23,28 +25,67 @@ def run_cli(argv):
     return code, out.getvalue(), err.getvalue()
 
 
-class DirectDependenciesTests(unittest.TestCase):
-    """The tool prints the direct dependencies of a package."""
+class TestModeTests(unittest.TestCase):
+    """The tool works with a test repository file."""
 
-    def test_prints_dependencies(self):
-        """Names returned by the repository are printed."""
-        repository = mock.Mock()
-        repository.dependencies.return_value = ["a", "b"]
-        with mock.patch(REPOSITORY, return_value=repository):
-            code, out, _ = run_cli(["-p", "express"])
+    def run_on(self, text, *extra):
+        """Run the tool on a test repository given as text."""
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "repo.txt")
+            with open(path, "w", encoding="utf-8") as file:
+                file.write(text)
+            return run_cli(["-t", "-r", path, *extra])
+
+    def test_prints_graph(self):
+        """The transitive graph is printed as adjacency lines."""
+        code, out, _ = self.run_on("A: B C\nB: C\nC:\n", "-p", "A")
         self.assertEqual(code, EXIT_OK)
         self.assertEqual(
             out.splitlines(),
-            ["Direct dependencies of express:", "  a", "  b"],
+            [
+                "Dependencies of A: 2 package(s)",
+                "  A -> B, C",
+                "  B -> C",
+                "  C -> (none)",
+            ],
         )
 
-    def test_no_dependencies(self):
-        """A package without dependencies is reported explicitly."""
-        repository = mock.Mock()
-        repository.dependencies.return_value = []
-        with mock.patch(REPOSITORY, return_value=repository):
-            _, out, _ = run_cli(["-p", "left-pad"])
-        self.assertIn("(none)", out)
+    def test_cycle(self):
+        """A cyclic graph is printed and the tool terminates."""
+        code, out, _ = self.run_on("A: B\nB: A\n", "-p", "A")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("  B -> A", out)
+
+    def test_filter(self):
+        """The filter option removes packages from the graph."""
+        _, out, _ = self.run_on("A: B C\nB:\nC:\n", "-p", "A", "-f", "B")
+        self.assertEqual(
+            out.splitlines(),
+            ["Dependencies of A: 1 package(s)", "  A -> C", "  C -> (none)"],
+        )
+
+    def test_unknown_package(self):
+        """A package missing in the test repository is an error."""
+        code, out, err = self.run_on("A:\n", "-p", "Z")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertEqual(out, "")
+        self.assertIn("not found", err)
+
+    def test_broken_repository(self):
+        """A malformed repository file is an error."""
+        code, _, err = self.run_on("oops\n", "-p", "A")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("line 1", err)
+
+    def test_filtered_package(self):
+        """Filtering out the analysed package is an error."""
+        code, _, err = self.run_on("A:\n", "-p", "A", "-f", "A")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("filter substring", err)
+
+
+class NpmModeTests(unittest.TestCase):
+    """The tool prints the graph of an npm package."""
 
     def test_repository_error(self):
         """Repository failures are printed as errors."""
@@ -55,6 +96,16 @@ class DirectDependenciesTests(unittest.TestCase):
         self.assertEqual(code, EXIT_ERROR)
         self.assertEqual(out, "")
         self.assertIn("error: gone", err)
+
+    def test_prints_graph(self):
+        """Dependencies returned by the registry form the graph."""
+        repository = mock.Mock()
+        repository.dependencies.side_effect = lambda name: {
+            "express": ["qs"], "qs": []}[name]
+        with mock.patch(REPOSITORY, return_value=repository):
+            code, out, _ = run_cli(["-p", "express"])
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("  express -> qs", out)
 
 
 class ErrorHandlingTests(unittest.TestCase):

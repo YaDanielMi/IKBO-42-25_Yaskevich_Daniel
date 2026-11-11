@@ -4,8 +4,9 @@ import argparse
 import sys
 
 from depgraph.config import DEFAULT_OUTPUT, build_config
-from depgraph.errors import ConfigError, DepGraphError
-from depgraph.npm_repository import NpmRepository
+from depgraph.errors import DepGraphError
+from depgraph.graph import build_dependency_graph
+from depgraph.repository import open_repository
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -45,17 +46,21 @@ def create_parser():
     return parser
 
 
-def print_direct_dependencies(config):
-    """Print the direct dependencies of the package (stage 2 only)."""
-    if config.test_mode:
-        raise ConfigError("test mode is not supported yet")
-    repository = NpmRepository(config.repo)
-    dependencies = repository.dependencies(config.package)
-    print(f"Direct dependencies of {config.package}:")
-    for name in dependencies:
-        print(f"  {name}")
-    if not dependencies:
-        print("  (none)")
+def print_graph(graph, root):
+    """Print the dependency graph as adjacency lines."""
+    print(f"Dependencies of {root}: {len(graph) - 1} package(s)")
+    for name, dependencies in graph.items():
+        targets = ", ".join(dependencies) or "(none)"
+        print(f"  {name} -> {targets}")
+
+
+def run(config):
+    """Build the dependency graph and print it."""
+    repository = open_repository(config)
+    graph = build_dependency_graph(
+        repository, config.package, config.filter_substring
+    )
+    print_graph(graph, config.package)
 
 
 def main(argv=None):
@@ -63,7 +68,7 @@ def main(argv=None):
     args = create_parser().parse_args(argv)
     try:
         config = build_config(args)
-        print_direct_dependencies(config)
+        run(config)
     except DepGraphError as error:
         print(f"error: {error}", file=sys.stderr)
         return EXIT_ERROR

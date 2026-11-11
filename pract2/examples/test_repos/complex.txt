@@ -1,0 +1,10 @@
+# A larger graph with a cycle B -> E -> H -> I -> B
+A: B C
+B: D E
+C: F
+D: G
+E: G H
+F: H
+G:
+H: I
+I: B

@@ -47,3 +47,31 @@ the parameters (stage 1 only) is removed.
 ```
 ./run.sh -p express
 ```
+
+## Stage 3. Basic operations
+
+The full transitive dependency graph is built with a breadth-first search
+(BFS) that uses a queue and no recursion (`src/depgraph/graph.py`).
+
+* Packages whose name contains the `--filter` substring are not analysed
+  (together with the dependencies that only they bring). The analysed
+  package itself must not match the filter.
+* Cyclic dependencies are handled: every package is visited once and the
+  back edge is kept in the graph.
+* Test mode (`-t -r FILE -p A`): the repository is a text file, one package
+  per line, packages are named with uppercase Latin letters:
+
+```
+A: B C
+B: D
+C: D
+D:
+```
+
+Test repositories for different cases are in `examples/test_repos`:
+`chain`, `diamond`, `cycle`, `self_loop`, `isolated`, `filter`, `complex`.
+
+```
+./run.sh -t -r examples/test_repos/cycle.txt -p A
+./run.sh -t -r examples/test_repos/filter.txt -p A -f B
+```

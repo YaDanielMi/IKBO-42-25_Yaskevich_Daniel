@@ -1,0 +1,6 @@
+# Names containing B are removed by "--filter B"
+A: AB BC C
+AB: C
+BC: AB D
+C:
+D:
