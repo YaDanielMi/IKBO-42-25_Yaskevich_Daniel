@@ -2,10 +2,10 @@
 
 import argparse
 import sys
-from dataclasses import asdict
 
 from depgraph.config import DEFAULT_OUTPUT, build_config
-from depgraph.errors import DepGraphError
+from depgraph.errors import ConfigError, DepGraphError
+from depgraph.npm_repository import NpmRepository
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -45,13 +45,17 @@ def create_parser():
     return parser
 
 
-def format_config(config):
-    """Return the parameters as ``key: value`` lines."""
-    lines = []
-    for key, value in asdict(config).items():
-        text = str(value).lower() if isinstance(value, bool) else value
-        lines.append(f"{key}: {text}")
-    return lines
+def print_direct_dependencies(config):
+    """Print the direct dependencies of the package (stage 2 only)."""
+    if config.test_mode:
+        raise ConfigError("test mode is not supported yet")
+    repository = NpmRepository(config.repo)
+    dependencies = repository.dependencies(config.package)
+    print(f"Direct dependencies of {config.package}:")
+    for name in dependencies:
+        print(f"  {name}")
+    if not dependencies:
+        print("  (none)")
 
 
 def main(argv=None):
@@ -59,8 +63,8 @@ def main(argv=None):
     args = create_parser().parse_args(argv)
     try:
         config = build_config(args)
+        print_direct_dependencies(config)
     except DepGraphError as error:
         print(f"error: {error}", file=sys.stderr)
         return EXIT_ERROR
-    print("\n".join(format_config(config)))
     return EXIT_OK

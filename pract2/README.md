@@ -34,3 +34,16 @@ make test
 ```
 ./run.sh -p express -f babel -a
 ```
+
+## Stage 2. Data collection
+
+The npm package format is used. The direct dependencies of the package are
+taken from the registry given by `--repo` (the public npm registry by
+default): the manifest of the latest version is requested over HTTP
+(`<registry>/<package>/latest`) with the standard library `urllib`, and the
+names from its `dependencies` field are printed. The key-value output of
+the parameters (stage 1 only) is removed.
+
+```
+./run.sh -p express
+```

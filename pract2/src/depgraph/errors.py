@@ -7,3 +7,11 @@ class DepGraphError(Exception):
 
 class ConfigError(DepGraphError):
     """A user supplied parameter has an invalid value."""
+
+
+class RepositoryError(DepGraphError):
+    """The repository cannot be read or has an invalid format."""
+
+
+class PackageNotFoundError(RepositoryError):
+    """The requested package does not exist in the repository."""

@@ -1,12 +1,15 @@
-"""Tests for the command line interface (stage 1)."""
+"""Tests for the command line interface."""
 
 import contextlib
 import io
 import unittest
+from unittest import mock
 
 from depgraph.cli import EXIT_ERROR, EXIT_OK, main
+from depgraph.errors import PackageNotFoundError
 
 USAGE_ERROR = 2
+REPOSITORY = "depgraph.cli.NpmRepository"
 
 
 def run_cli(argv):
@@ -20,37 +23,38 @@ def run_cli(argv):
     return code, out.getvalue(), err.getvalue()
 
 
-class ParametersOutputTests(unittest.TestCase):
-    """The tool prints all parameters as key-value pairs."""
+class DirectDependenciesTests(unittest.TestCase):
+    """The tool prints the direct dependencies of a package."""
 
-    def test_defaults(self):
-        """Default values are printed when only a package is given."""
-        code, out, _ = run_cli(["-p", "express"])
+    def test_prints_dependencies(self):
+        """Names returned by the repository are printed."""
+        repository = mock.Mock()
+        repository.dependencies.return_value = ["a", "b"]
+        with mock.patch(REPOSITORY, return_value=repository):
+            code, out, _ = run_cli(["-p", "express"])
         self.assertEqual(code, EXIT_OK)
         self.assertEqual(
             out.splitlines(),
-            [
-                "package: express",
-                "repo: https://registry.npmjs.org",
-                "test_mode: false",
-                "output: graph.png",
-                "ascii_tree: false",
-                "filter_substring: ",
-            ],
+            ["Direct dependencies of express:", "  a", "  b"],
         )
 
-    def test_all_parameters(self):
-        """Every parameter given by the user is reflected in the output."""
-        code, out, _ = run_cli(
-            ["-p", "react", "-r", "http://localhost:4873", "-o", "g.png",
-             "-a", "-f", "babel"]
-        )
-        self.assertEqual(code, EXIT_OK)
-        self.assertIn("package: react", out)
-        self.assertIn("repo: http://localhost:4873", out)
-        self.assertIn("output: g.png", out)
-        self.assertIn("ascii_tree: true", out)
-        self.assertIn("filter_substring: babel", out)
+    def test_no_dependencies(self):
+        """A package without dependencies is reported explicitly."""
+        repository = mock.Mock()
+        repository.dependencies.return_value = []
+        with mock.patch(REPOSITORY, return_value=repository):
+            _, out, _ = run_cli(["-p", "left-pad"])
+        self.assertIn("(none)", out)
+
+    def test_repository_error(self):
+        """Repository failures are printed as errors."""
+        repository = mock.Mock()
+        repository.dependencies.side_effect = PackageNotFoundError("gone")
+        with mock.patch(REPOSITORY, return_value=repository):
+            code, out, err = run_cli(["-p", "nothing"])
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertEqual(out, "")
+        self.assertIn("error: gone", err)
 
 
 class ErrorHandlingTests(unittest.TestCase):
