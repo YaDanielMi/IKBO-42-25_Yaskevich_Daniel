@@ -73,7 +73,8 @@ class NpmRepository:
     def packages(self):
         """The registry cannot list all packages, so this always fails."""
         raise RepositoryError(
-            "the list of all packages is not available in an npm registry"
+            "an npm registry cannot list all packages, so reverse "
+            "dependencies are available only in test mode"
         )
 
     def _load(self, name):

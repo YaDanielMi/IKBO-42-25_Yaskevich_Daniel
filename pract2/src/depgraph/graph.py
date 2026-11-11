@@ -56,3 +56,28 @@ def build_dependency_graph(repository, root, substring=""):
         ]
 
     return bfs_graph(root, neighbours)
+
+
+def _reverse_index(repository, names, substring):
+    """Map each package to the packages that directly depend on it."""
+    index = {}
+    for name in names:
+        if is_excluded(name, substring):
+            continue
+        for dependency in repository.dependencies(name):
+            if not is_excluded(dependency, substring):
+                index.setdefault(dependency, []).append(name)
+    return index
+
+
+def build_reverse_graph(repository, target, substring=""):
+    """Build the graph of packages that depend on the target package.
+
+    The same BFS as for the dependency graph is used, but it follows the
+    edges backwards: from a package to the packages that depend on it.
+    """
+    check_not_excluded(target, substring)
+    names = repository.packages()
+    repository.dependencies(target)
+    index = _reverse_index(repository, names, substring)
+    return bfs_graph(target, lambda name: list(index.get(name, [])))

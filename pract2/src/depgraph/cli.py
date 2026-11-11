@@ -5,7 +5,7 @@ import sys
 
 from depgraph.config import DEFAULT_OUTPUT, build_config
 from depgraph.errors import DepGraphError
-from depgraph.graph import build_dependency_graph
+from depgraph.graph import build_dependency_graph, build_reverse_graph
 from depgraph.repository import open_repository
 
 EXIT_OK = 0
@@ -43,24 +43,29 @@ def create_parser():
         "-f", "--filter", default="", dest="filter_substring",
         help="ignore packages whose name contains this substring",
     )
+    parser.add_argument(
+        "--reverse", action="store_true",
+        help="print reverse dependencies: packages that depend on -p",
+    )
     return parser
 
 
-def print_graph(graph, root):
-    """Print the dependency graph as adjacency lines."""
-    print(f"Dependencies of {root}: {len(graph) - 1} package(s)")
-    for name, dependencies in graph.items():
-        targets = ", ".join(dependencies) or "(none)"
-        print(f"  {name} -> {targets}")
+def print_graph(graph, root, reverse):
+    """Print the graph as adjacency lines."""
+    kind = "Reverse dependencies" if reverse else "Dependencies"
+    arrow = "<-" if reverse else "->"
+    print(f"{kind} of {root}: {len(graph) - 1} package(s)")
+    for name, neighbours in graph.items():
+        targets = ", ".join(neighbours) or "(none)"
+        print(f"  {name} {arrow} {targets}")
 
 
 def run(config):
-    """Build the dependency graph and print it."""
+    """Build the selected graph and print it."""
     repository = open_repository(config)
-    graph = build_dependency_graph(
-        repository, config.package, config.filter_substring
-    )
-    print_graph(graph, config.package)
+    build = build_reverse_graph if config.reverse else build_dependency_graph
+    graph = build(repository, config.package, config.filter_substring)
+    print_graph(graph, config.package, config.reverse)
 
 
 def main(argv=None):

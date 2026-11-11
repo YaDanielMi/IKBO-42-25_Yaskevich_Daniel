@@ -75,3 +75,19 @@ Test repositories for different cases are in `examples/test_repos`:
 ./run.sh -t -r examples/test_repos/cycle.txt -p A
 ./run.sh -t -r examples/test_repos/filter.txt -p A -f B
 ```
+
+## Stage 4. Additional operations
+
+`--reverse` prints the reverse dependencies of the package given by `-p`:
+the packages that depend on it, directly or through other packages. The
+same BFS is used, but it follows the edges backwards. `--filter` is
+applied here as well.
+
+An npm registry cannot list all its packages, so reverse dependencies are
+available only for test repositories (`--test-mode`).
+
+```
+./run.sh -t -r examples/test_repos/diamond.txt -p D --reverse
+./run.sh -t -r examples/test_repos/complex.txt -p G --reverse
+./run.sh -t -r examples/test_repos/cycle.txt -p A --reverse
+```

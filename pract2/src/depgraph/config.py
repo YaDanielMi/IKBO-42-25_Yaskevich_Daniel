@@ -28,6 +28,7 @@ class Config:
     output: str
     ascii_tree: bool
     filter_substring: str
+    reverse: bool
 
 
 def validate_package(name, test_mode):
@@ -113,4 +114,5 @@ def build_config(args):
         output=validate_output(args.output),
         ascii_tree=args.ascii_tree,
         filter_substring=validate_substring(args.filter_substring),
+        reverse=args.reverse,
     )

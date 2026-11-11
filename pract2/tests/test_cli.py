@@ -64,6 +64,22 @@ class TestModeTests(unittest.TestCase):
             ["Dependencies of A: 1 package(s)", "  A -> C", "  C -> (none)"],
         )
 
+    def test_reverse_dependencies(self):
+        """The reverse option prints the packages that depend on -p."""
+        code, out, _ = self.run_on(
+            "A: B C\nB: C\nC:\n", "-p", "C", "--reverse"
+        )
+        self.assertEqual(code, EXIT_OK)
+        self.assertEqual(
+            out.splitlines(),
+            [
+                "Reverse dependencies of C: 2 package(s)",
+                "  C <- A, B",
+                "  A <- (none)",
+                "  B <- A",
+            ],
+        )
+
     def test_unknown_package(self):
         """A package missing in the test repository is an error."""
         code, out, err = self.run_on("A:\n", "-p", "Z")
@@ -96,6 +112,12 @@ class NpmModeTests(unittest.TestCase):
         self.assertEqual(code, EXIT_ERROR)
         self.assertEqual(out, "")
         self.assertIn("error: gone", err)
+
+    def test_reverse_is_not_available(self):
+        """An npm registry cannot provide reverse dependencies."""
+        code, _, err = run_cli(["-p", "express", "--reverse"])
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("only in test mode", err)
 
     def test_prints_graph(self):
         """Dependencies returned by the registry form the graph."""

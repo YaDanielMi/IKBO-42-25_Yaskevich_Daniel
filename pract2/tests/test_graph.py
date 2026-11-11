@@ -4,7 +4,11 @@ import unittest
 
 from depgraph.errors import ConfigError, PackageNotFoundError
 from depgraph.file_repository import FileRepository
-from depgraph.graph import bfs_graph, build_dependency_graph
+from depgraph.graph import (
+    bfs_graph,
+    build_dependency_graph,
+    build_reverse_graph,
+)
 
 
 def build(text, root, substring=""):
@@ -100,6 +104,60 @@ class FilterTests(unittest.TestCase):
         """An unknown package is reported."""
         with self.assertRaises(PackageNotFoundError):
             build(self.TEXT, "Z")
+
+
+def build_reverse(text, target, substring=""):
+    """Build a reverse graph from a test repository given as text."""
+    repository = FileRepository.from_text(text)
+    return build_reverse_graph(repository, target, substring)
+
+
+class ReverseGraphTests(unittest.TestCase):
+    """Packages that depend on the given package."""
+
+    DIAMOND = "A: B C\nB: D\nC: D\nD:\n"
+
+    def test_package_nobody_depends_on(self):
+        """The root of a graph has no reverse dependencies."""
+        self.assertEqual(build_reverse(self.DIAMOND, "A"), {"A": []})
+
+    def test_direct_and_transitive(self):
+        """Both direct and transitive dependents are found."""
+        graph = build_reverse(self.DIAMOND, "D")
+        self.assertEqual(
+            graph, {"D": ["B", "C"], "B": ["A"], "C": ["A"], "A": []}
+        )
+
+    def test_middle_of_a_chain(self):
+        """Only the packages above the target are reported."""
+        graph = build_reverse("A: B\nB: C\nC: D\nD:\n", "C")
+        self.assertEqual(list(graph), ["C", "B", "A"])
+
+    def test_cycle(self):
+        """Cycles do not make the traversal endless."""
+        graph = build_reverse("A: B\nB: C\nC: A D\nD:\n", "A")
+        self.assertEqual(set(graph), {"A", "B", "C"})
+        self.assertEqual(graph["A"], ["C"])
+
+    def test_self_loop(self):
+        """A self-dependency is reported once."""
+        self.assertEqual(build_reverse("A: A\n", "A"), {"A": ["A"]})
+
+    def test_filter(self):
+        """Filtered packages are neither visited nor passed through."""
+        text = "A: AB\nAB: C\nB: C\nC:\n"
+        graph = build_reverse(text, "C", "A")
+        self.assertEqual(graph, {"C": ["B"], "B": []})
+
+    def test_filtered_target(self):
+        """The analysed package cannot be filtered out."""
+        with self.assertRaises(ConfigError):
+            build_reverse("AB:\n", "AB", "B")
+
+    def test_unknown_target(self):
+        """An unknown package is reported."""
+        with self.assertRaises(PackageNotFoundError):
+            build_reverse("A:\n", "Z")
 
 
 if __name__ == "__main__":
