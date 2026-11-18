@@ -5,6 +5,7 @@ import io
 import os
 import tempfile
 import unittest
+from functools import cached_property
 from unittest import mock
 
 from depgraph.cli import EXIT_ERROR, EXIT_OK, main
@@ -29,14 +30,25 @@ def run_cli(argv):
 class WorkDirTestCase(unittest.TestCase):
     """Base class: a temporary directory and a mocked PNG renderer."""
 
-    def setUp(self):
-        """Create the directory and replace the PNG renderer."""
+    @cached_property
+    def directory(self):
+        """A temporary directory (removed after the test)."""
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        self.directory = directory.name
+        return directory.name
+
+    @cached_property
+    def render(self):
+        """The mocked PNG renderer (patched until the test ends)."""
         patcher = mock.patch(RENDER)
-        self.render = patcher.start()
+        render = patcher.start()
         self.addCleanup(patcher.stop)
+        return render
+
+    def run_cli(self, argv):
+        """Run main() with the PNG renderer already replaced."""
+        self.assertIsNotNone(self.render)  # starts the patch
+        return run_cli(argv)
 
     def path(self, name):
         """Return the path of a file inside the temporary directory."""
@@ -48,7 +60,7 @@ class WorkDirTestCase(unittest.TestCase):
         with open(repo, "w", encoding="utf-8") as file:
             file.write(text)
         output = self.path("g.png")
-        return run_cli(["-t", "-r", repo, "-o", output, *extra])
+        return self.run_cli(["-t", "-r", repo, "-o", output, *extra])
 
 
 class TestModeTests(WorkDirTestCase):
@@ -159,14 +171,14 @@ class NpmModeTests(WorkDirTestCase):
         repository = mock.Mock()
         repository.dependencies.side_effect = PackageNotFoundError("gone")
         with mock.patch(REPOSITORY, return_value=repository):
-            code, out, err = run_cli(["-p", "nothing"])
+            code, out, err = self.run_cli(["-p", "nothing"])
         self.assertEqual(code, EXIT_ERROR)
         self.assertEqual(out, "")
         self.assertIn("error: gone", err)
 
     def test_reverse_is_not_available(self):
         """An npm registry cannot provide reverse dependencies."""
-        code, _, err = run_cli(["-p", "express", "--reverse"])
+        code, _, err = self.run_cli(["-p", "express", "--reverse"])
         self.assertEqual(code, EXIT_ERROR)
         self.assertIn("only in test mode", err)
 
@@ -176,7 +188,8 @@ class NpmModeTests(WorkDirTestCase):
         repository.dependencies.side_effect = lambda name: {
             "express": ["qs"], "qs": []}[name]
         with mock.patch(REPOSITORY, return_value=repository):
-            code, out, _ = run_cli(["-p", "express", "-o", self.path("e.png")])
+            code, out, _ = self.run_cli(
+                ["-p", "express", "-o", self.path("e.png")])
         self.assertEqual(code, EXIT_OK)
         self.assertIn("  express -> qs", out)
 

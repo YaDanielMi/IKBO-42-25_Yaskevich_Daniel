@@ -80,30 +80,30 @@ class CycleTests(unittest.TestCase):
 class FilterTests(unittest.TestCase):
     """Packages whose name contains the substring are ignored."""
 
-    TEXT = "A: AB BC C\nAB: C\nBC: AB D\nC:\nD:\n"
+    text = "A: AB BC C\nAB: C\nBC: AB D\nC:\nD:\n"
 
     def test_filter_removes_packages_and_their_subtrees(self):
         """Excluded packages and what only they bring are not visited."""
-        graph = build(self.TEXT, "A", "B")
+        graph = build(self.text, "A", "B")
         self.assertEqual(graph, {"A": ["C"], "C": []})
 
     def test_empty_filter_keeps_everything(self):
         """An empty substring does not exclude anything."""
-        self.assertEqual(len(build(self.TEXT, "A")), 5)
+        self.assertEqual(len(build(self.text, "A")), 5)
 
     def test_filter_is_case_sensitive(self):
         """The substring is compared as is."""
-        self.assertEqual(len(build(self.TEXT, "A", "b")), 5)
+        self.assertEqual(len(build(self.text, "A", "b")), 5)
 
     def test_filtered_root_is_an_error(self):
         """The analysed package itself cannot be filtered out."""
         with self.assertRaises(ConfigError):
-            build(self.TEXT, "AB", "B")
+            build(self.text, "AB", "B")
 
     def test_unknown_root(self):
         """An unknown package is reported."""
         with self.assertRaises(PackageNotFoundError):
-            build(self.TEXT, "Z")
+            build(self.text, "Z")
 
 
 def build_reverse(text, target, substring=""):
@@ -115,15 +115,15 @@ def build_reverse(text, target, substring=""):
 class ReverseGraphTests(unittest.TestCase):
     """Packages that depend on the given package."""
 
-    DIAMOND = "A: B C\nB: D\nC: D\nD:\n"
+    diamond = "A: B C\nB: D\nC: D\nD:\n"
 
     def test_package_nobody_depends_on(self):
         """The root of a graph has no reverse dependencies."""
-        self.assertEqual(build_reverse(self.DIAMOND, "A"), {"A": []})
+        self.assertEqual(build_reverse(self.diamond, "A"), {"A": []})
 
     def test_direct_and_transitive(self):
         """Both direct and transitive dependents are found."""
-        graph = build_reverse(self.DIAMOND, "D")
+        graph = build_reverse(self.diamond, "D")
         self.assertEqual(
             graph, {"D": ["B", "C"], "B": ["A"], "C": ["A"], "A": []}
         )

@@ -1,5 +1,6 @@
 """Tests of ls and cd working on a VFS."""
 import unittest
+from functools import cached_property
 
 from shell import Shell
 from test_vfs import VfsTestCase
@@ -9,10 +10,10 @@ from vfs import Node
 class CommandsTestCase(VfsTestCase):
     """Base class: a shell attached to the test VFS."""
 
-    def setUp(self):
-        """Attach a shell to the VFS."""
-        super().setUp()
-        self.shell = Shell("u", "h", self.vfs)
+    @cached_property
+    def shell(self):
+        """A shell attached to the VFS (one per test)."""
+        return Shell("u", "h", self.vfs)
 
     def lines(self, command):
         """Run a command and return its stdout lines."""

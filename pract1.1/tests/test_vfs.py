@@ -2,6 +2,7 @@
 import os
 import tempfile
 import unittest
+from functools import cached_property
 
 from vfs import (
     NOT_A_DIRECTORY, NOT_FOUND, Vfs, VfsError, load_directory,
@@ -20,20 +21,25 @@ def make_tree(base, files):
 class VfsTestCase(unittest.TestCase):
     """Base class creating a small tree and loading it."""
 
-    FILES = {
+    files = {
         "a.txt": "12345",
         "docs/b.txt": "xy",
         "docs/deep/c.txt": "",
         "empty/.keep": "",
     }
 
-    def setUp(self):
-        """Create the temporary tree and load it."""
+    @cached_property
+    def path(self):
+        """A temporary directory with the tree (removed after the test)."""
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        self.path = folder.name
-        make_tree(self.path, self.FILES)
-        self.vfs = Vfs.from_directory(self.path)
+        make_tree(folder.name, self.files)
+        return folder.name
+
+    @cached_property
+    def vfs(self):
+        """The tree loaded into memory."""
+        return Vfs.from_directory(self.path)
 
 
 class LoadTest(VfsTestCase):
@@ -56,8 +62,9 @@ class LoadTest(VfsTestCase):
         self.assertEqual(Vfs.from_directory(self.path).count(), (3, 4))
 
     def test_vfs_is_independent_of_disk(self):
+        vfs = self.vfs
         os.remove(os.path.join(self.path, "a.txt"))
-        _, node = self.vfs.resolve("/", "a.txt")
+        _, node = vfs.resolve("/", "a.txt")
         self.assertFalse(node.is_dir)
 
     def test_loading_does_not_modify_disk(self):

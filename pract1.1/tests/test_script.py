@@ -2,6 +2,7 @@
 import os
 import tempfile
 import unittest
+from functools import cached_property
 
 from helpers import RecordingView
 from script import ScriptError, read_script, run_script
@@ -35,10 +36,15 @@ class ReadScriptTest(unittest.TestCase):
 class RunScriptTest(unittest.TestCase):
     """Replaying scripts as a dialog."""
 
-    def setUp(self):
-        """Create a shell and a recording view."""
-        self.shell = Shell("u", "h")
-        self.view = RecordingView()
+    @cached_property
+    def shell(self):
+        """A fresh shell without VFS (one per test)."""
+        return Shell("u", "h")
+
+    @cached_property
+    def view(self):
+        """A fresh recording view (one per test)."""
+        return RecordingView()
 
     def test_input_and_output_are_shown(self):
         run_script(self.shell, ["ls a"], self.view)

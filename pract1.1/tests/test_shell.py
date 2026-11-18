@@ -1,5 +1,6 @@
 """Tests of the shell dispatcher and built-in commands."""
 import unittest
+from functools import cached_property
 
 from shell import Shell
 
@@ -7,9 +8,10 @@ from shell import Shell
 class ShellTest(unittest.TestCase):
     """Behaviour of Shell.execute at the REPL stage."""
 
-    def setUp(self):
-        """Create a shell without VFS."""
-        self.shell = Shell("alice", "box")
+    @cached_property
+    def shell(self):
+        """A fresh shell without VFS (one per test)."""
+        return Shell("alice", "box")
 
     def test_prompt(self):
         self.assertEqual(self.shell.prompt(), "alice@box:/$ ")

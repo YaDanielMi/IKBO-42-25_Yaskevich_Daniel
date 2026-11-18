@@ -3,6 +3,7 @@
 import os
 import tempfile
 import unittest
+from functools import cached_property
 import urllib.error
 from unittest import mock
 
@@ -67,11 +68,12 @@ class EncodingTests(unittest.TestCase):
 class RenderTests(unittest.TestCase):
     """Producing the PNG file."""
 
-    def setUp(self):
-        """Create a directory for the output file."""
+    @cached_property
+    def output(self):
+        """Path of the output file in a temporary directory."""
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        self.output = os.path.join(directory.name, "g.png")
+        return os.path.join(directory.name, "g.png")
 
     def read_output(self):
         """Return the content of the output file."""
