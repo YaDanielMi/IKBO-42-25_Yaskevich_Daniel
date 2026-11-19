@@ -47,7 +47,7 @@ class WorkDirTestCase(unittest.TestCase):
 
     def run_cli(self, argv):
         """Run main() with the PNG renderer already replaced."""
-        self.assertIsNotNone(self.render)  # starts the patch
+        self.assertIsNotNone(self.render)
         return run_cli(argv)
 
     def path(self, name):
